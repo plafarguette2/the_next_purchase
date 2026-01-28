@@ -1,0 +1,2 @@
+DATADIRPATH = "data/"
+IMAGESPATH = "images/"
