@@ -2,7 +2,7 @@
 # ################################### Imports ############################################
 
 from src.load_data import load_clients_data, load_products_data, load_stocks_data, load_stores_data, load_transactions_data
-from src.store_recommendations import make_store_displays
+from src.store_recommendations import make_store_displays, build_display_from_product
 from config import IMAGESPATH
 import streamlit as st
 import numpy as np
@@ -39,26 +39,32 @@ stocks_df = load_stocks_data()
 customer_segments = ['All'] + list(clients_df['ClientSegment'].unique())
 customer_countries = ['All'] + list(clients_df['ClientCountry'].unique())
 
-image_product_category_dict = {
-    'Football' : f"{IMAGESPATH}/futbol-solid-full.svg",
-    'Cycling' : f"{IMAGESPATH}/bicycle-solid-full.svg",
-    'Badminton' : f"{IMAGESPATH}/sports_tennis_24dp_1E3050.svg",
-    'Handball' : f"{IMAGESPATH}/sports_handball_24dp_1E3050.svg",
-    'Tennis' : f"{IMAGESPATH}/sports_tennis_24dp_1E3050.svg",
-    'Golf' : f"{IMAGESPATH}/golf-ball-tee-solid-full.svg",
-    'Hockey' : f"{IMAGESPATH}/hockey-puck-solid-full.svg",
-    'Volleyball' : f"{IMAGESPATH}/volleyball-solid-full.svg",
-    'Baseball' : f"{IMAGESPATH}/baseball-bat-ball-solid-full.svg",
-    'Basketball' : f"{IMAGESPATH}/basketball-solid-full.svg",
-    'Rugby' : f"{IMAGESPATH}/sports_rugby_24dp_1E3050.svg",
-    'Cricket' : f"{IMAGESPATH}/sports_cricket_24dp_1E3050.svg",
-    'Running' : f"{IMAGESPATH}/person-running-solid-full.svg",
-    'Beach' : f"{IMAGESPATH}/umbrella-beach-solid-full.svg",
-    'Softball' : f"{IMAGESPATH}/softball-solid-full.svg",
-    'Skiing' : f"{IMAGESPATH}/person-skiing-solid-full.svg",
-    'Gymnastics' : f"{IMAGESPATH}/sports_gymnastics_24dp_1E3050.svg",
-    'Skating' : f"{IMAGESPATH}/person-skating-solid-full.svg",
-    'Swimming' : f"{IMAGESPATH}/person-swimming-solid-full.svg"
+image_product_family_level1_dict = {
+    'Bat': f'{IMAGESPATH}/Bat.svg',
+    'Bike': f'{IMAGESPATH}/Bike.svg',
+    'Cap': f'{IMAGESPATH}/Cap.svg',
+    'Clubs': f'{IMAGESPATH}/Clubs.svg',
+    'Dress': f'{IMAGESPATH}/Dress.svg',
+    'Glove': f'{IMAGESPATH}/Glove.svg',
+    'Gloves': f'{IMAGESPATH}/Gloves.svg',
+    'Goggles': f'{IMAGESPATH}/Goggles.svg',
+    'Helmet': f'{IMAGESPATH}/Helmet.svg',
+    'Jersey': f'{IMAGESPATH}/Jersey.svg',
+    'Knee Pads': f'{IMAGESPATH}/Knee Pads.svg',
+    'Mat': f'{IMAGESPATH}/Mat.svg',
+    'Pads': f'{IMAGESPATH}/Pads.svg',
+    'Poles': f'{IMAGESPATH}/Poles.svg',
+    'Puck': f'{IMAGESPATH}/Puck.svg',
+    'Racket': f'{IMAGESPATH}/Racket.svg',
+    'Shoes': f'{IMAGESPATH}/Shoes.svg',
+    'Shorts': f'{IMAGESPATH}/Shorts.svg',
+    'Shuttlecock': f'{IMAGESPATH}/Shuttlecock.svg',
+    'Skates': f'{IMAGESPATH}/Skates.svg',
+    'Skis': f'{IMAGESPATH}/Skis.svg',
+    'Stick': f'{IMAGESPATH}/Stick.svg',
+    'Swimsuit': f'{IMAGESPATH}/Swimsuit.svg',
+    'T-shirt': f'{IMAGESPATH}/T-shirt.svg',
+    'Ball': f'{IMAGESPATH}/Ball.svg'
 }
 
 ##########################################################################################
@@ -99,7 +105,7 @@ with st.sidebar:
     store_id = st.sidebar.text_input(
         label = '**🏪 Store ID**',
         placeholder = 'Enter store ID',
-        value='2686511472610728845'
+        value='1450109522794525790'
         )
     displays_nb = int(st.sidebar.text_input(
         label = '**🖼️ Displays**',
@@ -159,7 +165,7 @@ with tab1:
 
             col_image, col_factors = st.columns([1,3])
             with col_image :
-                st.image(image_product_category_dict[products_df[products_df['ProductID']==recommended_product_ids[i]]['Category'].iloc[0]], width=200)
+                st.image(image_product_family_level1_dict[products_df[products_df['ProductID']==recommended_product_ids[i]]['FamilyLevel1'].iloc[0]], width=200)
             with col_factors: 
                 st.write('**Key Recommendation Factors**')
 
@@ -184,13 +190,12 @@ with tab2:
                     with st.container(border=True):
                         subcol_image, subcol_description = st.columns([1,4])
                         with subcol_image:
-                            st.image(image_product_category_dict[product_category], width=100)
+                            st.image(image_product_family_level1_dict[product_family_level_1], width=100)
                         with subcol_description:
                             subcol_badge, subcol_product_name = st.columns([1,6])
                             with subcol_badge:
                                 st.badge(f'#{j+1}', color='blue', width=100)
                             with subcol_product_name:
-                                #st.write(f'**{product_id}**')
                                 st.write(f'**{product_family_level_2}**')
                             st.caption(f'{product_family_level_1}')
                             subcol_metric1, subcol_metric2 = st.columns([1,1])
@@ -230,13 +235,12 @@ with tab2:
                     with st.container(border=True):
                         subcol_image, subcol_description = st.columns([1,4])
                         with subcol_image:
-                            st.image(image_product_category_dict[product_category], width=100)
+                            st.image(image_product_family_level1_dict[product_family_level_1], width=100)
                         with subcol_description:
                             subcol_badge, subcol_product_name = st.columns([1,6])
                             with subcol_badge:
                                 st.badge(f'#{j+1}', color='blue', width=100)
                             with subcol_product_name:
-                                #st.write(f'**{product_id}**')
                                 st.write(f'**{product_family_level_2}**')
                             st.caption(f'{product_family_level_1}')
                             subcol_metric1, subcol_metric2 = st.columns([1,1])
@@ -285,41 +289,55 @@ with tab2:
         st.session_state.custom_displays[idx] = product_id
 
         if product_id:
+            custom_display = build_display_from_product(
+                store_id,
+                product_id,
+                transactions=transactions_df,
+                products=products_df,
+                stocks=stocks_df,
+                stores=stores_df,
+                items_per_display=product_by_display,
+                min_stock=3,
+                max_per_family=2
+            )
+            anchor_product = products_df[products_df['ProductID']==product_id]['FamilyLevel2'].iloc[0]
+            nb_items = len(custom_display)
             # render display
             with st.container(border=True):
-                st.subheader(f"Custom display - Product {product_id}")
+                st.subheader(f"Custom display - Product {anchor_product}")
                 customize_col1, customize_col2 = st.columns([1,1])
 
                 with customize_col1:
-                    for i in range(int(np.floor((product_by_display)/2))):
+                    for j in range(0,nb_items,2):
+                        product_category = custom_display['Category'].iloc[j]
+                        product_family_level_1 = custom_display['FamilyLevel1'].iloc[j]
+                        product_id = custom_display['ProductID'].iloc[j]
+                        product_family_level_2 = custom_display['FamilyLevel2'].iloc[j]
+                        product_store_stock = custom_display['store_stock'].iloc[j]
+                        product_price = get_product_price(product_id=product_id)
+                        expected_sales_unit = get_expected_sales(product_stock=product_store_stock)
+                    
                         with st.container(border=True):
                             subcol_image, subcol_description = st.columns([1,4])
                             with subcol_image:
-                                st.image(
-                                    image_product_category_dict[
-                                        products_df[products_df['ProductID']==recommended_product_ids[2*i]]['Category'].iloc[0]
-                                    ],
-                                    width=100
-                                )
+                                st.image(image_product_family_level1_dict[product_family_level_1], width=100)
                             with subcol_description:
                                 subcol_badge, subcol_product_name = st.columns([1,6])
                                 with subcol_badge:
-                                    st.badge(f'#{2*i+1}', color='blue', width=100)
+                                    st.badge(f'#{j+1}', color='blue', width=100)
                                 with subcol_product_name:
-                                    st.write(f'**{recommended_product_ids[2*i]}**')
-                                st.caption(
-                                    f'{products_df[products_df["ProductID"]==recommended_product_ids[2*i]]["FamilyLevel1"].iloc[0]}'
-                                )
+                                    st.write(f'**{product_family_level_2}**')
+                                st.caption(f'{product_family_level_1}')
                                 subcol_metric1, subcol_metric2 = st.columns([1,1])
                                 with subcol_metric1:
-                                    with st.container(border=True):
-                                        subcol_caption, subcol_value = st.columns([1,1])
+                                    with st.container(border=True): 
+                                        subcol_caption, subcol_value = st.columns([2,3])
                                         with subcol_caption:
                                             st.caption('Price')
                                         with subcol_value:
                                             st.write(f'€ {product_price}')
                                 with subcol_metric2:
-                                    with st.container(border=True):
+                                    with st.container(border=True): 
                                         subcol_caption2, subcol_value2 = st.columns([4,2])
                                         with subcol_caption2:
                                             st.caption('Exp. sales')
@@ -328,40 +346,44 @@ with tab2:
 
                             subcol_stock, subcol_empty = st.columns([1,1])
                             with subcol_stock:
-                                product_stock = np.random.randint(1,20)
-                                color = "green" if product_stock > 5 else "yellow" if product_stock > 2 else "red"
-                                st.badge(f'{product_stock} units', icon=":material/package_2:", color=color)
+                                if product_store_stock <= 2:
+                                    st.badge(f'{product_store_stock} units',icon=":material/package_2:", color='red')
+                                elif product_store_stock <=5:
+                                    st.badge(f'{product_store_stock} units',icon=":material/package_2:", color='yellow')
+                                else:
+                                    st.badge(f'{product_store_stock} units',icon=":material/package_2:", color='green')
 
                 with customize_col2:
-                    for i in range(int(np.floor((product_by_display)/2))):
+                    for j in range(1,nb_items,2):
+                        product_category = custom_display['Category'].iloc[j]
+                        product_family_level_1 = custom_display['FamilyLevel1'].iloc[j]
+                        product_id = custom_display['ProductID'].iloc[j]
+                        product_family_level_2 = custom_display['FamilyLevel2'].iloc[j]
+                        product_store_stock = custom_display['store_stock'].iloc[j]
+                        product_price = get_product_price(product_id=product_id)
+                        expected_sales_unit = get_expected_sales(product_stock=product_store_stock)
+                    
                         with st.container(border=True):
                             subcol_image, subcol_description = st.columns([1,4])
                             with subcol_image:
-                                st.image(
-                                    image_product_category_dict[
-                                        products_df[products_df['ProductID']==recommended_product_ids[2*i+1]]['Category'].iloc[0]
-                                    ],
-                                    width=100
-                                )
+                                st.image(image_product_family_level1_dict[product_family_level_1], width=100)
                             with subcol_description:
                                 subcol_badge, subcol_product_name = st.columns([1,6])
                                 with subcol_badge:
-                                    st.badge(f'#{2*i+2}', color='blue', width=100)
+                                    st.badge(f'#{j+1}', color='blue', width=100)
                                 with subcol_product_name:
-                                    st.write(f'**{recommended_product_ids[2*i+1]}**')
-                                st.caption(
-                                    f'{products_df[products_df["ProductID"]==recommended_product_ids[2*i+1]]["FamilyLevel1"].iloc[0]}'
-                                )
+                                    st.write(f'**{product_family_level_2}**')
+                                st.caption(f'{product_family_level_1}')
                                 subcol_metric1, subcol_metric2 = st.columns([1,1])
                                 with subcol_metric1:
-                                    with st.container(border=True):
-                                        subcol_caption, subcol_value = st.columns([1,1])
+                                    with st.container(border=True): 
+                                        subcol_caption, subcol_value = st.columns([2,3])
                                         with subcol_caption:
                                             st.caption('Price')
                                         with subcol_value:
                                             st.write(f'€ {product_price}')
                                 with subcol_metric2:
-                                    with st.container(border=True):
+                                    with st.container(border=True): 
                                         subcol_caption2, subcol_value2 = st.columns([4,2])
                                         with subcol_caption2:
                                             st.caption('Exp. sales')
@@ -370,9 +392,12 @@ with tab2:
 
                             subcol_stock, subcol_empty = st.columns([1,1])
                             with subcol_stock:
-                                product_stock = np.random.randint(1,10)
-                                color = "green" if product_stock > 5 else "yellow" if product_stock > 2 else "red"
-                                st.badge(f'{product_stock} units', icon=":material/package_2:", color=color)
+                                if product_store_stock <= 2:
+                                    st.badge(f'{product_store_stock} units',icon=":material/package_2:", color='red')
+                                elif product_store_stock <=5:
+                                    st.badge(f'{product_store_stock} units',icon=":material/package_2:", color='yellow')
+                                else:
+                                    st.badge(f'{product_store_stock} units',icon=":material/package_2:", color='green')
 
 ##########################################################################################
 ################################## Mock data generation ##################################
