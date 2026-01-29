@@ -2,6 +2,8 @@
 # ################################### Imports ############################################
 
 from src.load_data import load_clients_data, load_products_data, load_stocks_data, load_stores_data, load_transactions_data
+from src.modeling.artifacts import load_artifacts
+from src.modeling.pipeline import recommend_for_client
 from src.store_recommendations import make_store_displays, build_display_from_product
 from config import IMAGESPATH
 import streamlit as st
@@ -27,11 +29,27 @@ expected_sales_unit = 120
 ##########################################################################################
 ##################################### Data ###############################################
 
-transactions_df = load_transactions_data()
-clients_df = load_clients_data()
-products_df = load_products_data()
-stores_df = load_stores_data()
-stocks_df = load_stocks_data()
+@st.cache_data
+def load_all_data():
+    transactions_df = load_transactions_data()
+    clients_df = load_clients_data()
+    products_df = load_products_data()
+    stores_df = load_stores_data()
+    stocks_df = load_stocks_data()
+    products_df_2 = load_products_data()
+    return transactions_df, clients_df, products_df, stores_df, stocks_df, products_df_2
+
+
+transactions_df, clients_df, products_df, stores_df, stocks_df ,products_df_2 = load_all_data()
+
+##########################################################################################
+##################################### Models #############################################
+
+@st.cache_resource
+def load_model_artifacts():
+    return load_artifacts("model")
+
+artifacts = load_model_artifacts()
 
 ##########################################################################################
 ################################## Constants #############################################
@@ -89,7 +107,6 @@ def get_expected_sales(product_stock:float)-> int:
 st.title("Customer Purchase Recommendation System")
 st.set_page_config(layout="wide",initial_sidebar_state="expanded")
 tab1, tab2, tab3 = st.tabs(['Client-level Recommendations','Store-level Recommendations','Monitoring Dashboard'])
-recommended_products_customer_nb = 5
 
 ##########################################################################################
 ##################################### Sidebar ############################################
@@ -99,8 +116,14 @@ with st.sidebar:
     st.write('')
     client_id = st.sidebar.text_input(
         label = '**👤 Client ID**',
-        placeholder = 'Enter client ID'
+        placeholder = 'Enter client ID',
+        value='4508698145640552159'
         )
+    recommended_products_customer_nb = int(st.sidebar.text_input(
+    label = '**🛍️Number of products to recommend**',
+    placeholder = 'Enter nb of products',
+    value='5'
+    ))
     st.write('---')
     store_id = st.sidebar.text_input(
         label = '**🏪 Store ID**',
@@ -145,29 +168,63 @@ displays, flat = make_store_displays(
     max_per_family=2,
 )
 
+customer_recommended_products = recommend_for_client(
+    artifacts,
+    client_id=int(client_id),
+    clients_df=clients_df,
+    products_df=products_df_2,
+    N_candidates=200,
+    top_k=recommended_products_customer_nb,
+    min_stock=1.0,
+    stock_boost=0.02,
+    diversity_boost=0.05,
+    diversity_level="FamilyLevel1",
+    enforce_gender=False 
+)
+
 ##########################################################################################
 ######################### Tab 1 : Client-level Recommendations ###########################
 
 with tab1:
     for i in range(recommended_products_customer_nb):
-        product_price = get_product_price(recommended_product_ids[i])
-        with st.container(border=True):
-            col_icon, col_product_name = st.columns([1,10])
+        rec_product_id = customer_recommended_products['ProductID'].iloc[i]
+        rec_product_family_level_1 = products_df_2[products_df_2['ProductID']==rec_product_id]['FamilyLevel1'].iloc[0]
+        rec_product_category = products_df_2[products_df_2['ProductID']==rec_product_id]['Category'].iloc[0]
+        rec_product_family_level_2 = products_df_2[products_df_2['ProductID']==rec_product_id]['FamilyLevel2'].iloc[0]
+        rec_product_universe = products_df_2[products_df_2['ProductID']==rec_product_id]['Universe'].iloc[0]
+        rec_product_stock = customer_recommended_products['StockQty'].iloc[i]
+        rec_product_price = get_product_price(str(rec_product_id))      
 
-            with col_icon:
-                st.write('')
-                st.image(f'{IMAGESPATH}/counter_{i+1}_24dp_1E3050_FILL0_wght400_GRAD0_opsz24.svg', width=60)
-            with col_product_name:
-                st.subheader(f'{recommended_product_ids[i]}')
-                st.write(f'{products_df[products_df["ProductID"]==recommended_product_ids[i]]["FamilyLevel1"].iloc[0]} - {product_price} €')
-            
-            st.write('---')
-
-            col_image, col_factors = st.columns([1,3])
-            with col_image :
-                st.image(image_product_family_level1_dict[products_df[products_df['ProductID']==recommended_product_ids[i]]['FamilyLevel1'].iloc[0]], width=200)
-            with col_factors: 
-                st.write('**Key Recommendation Factors**')
+        left_col, content_col, right_col = st.columns([1,2,1])
+        with content_col:
+            with st.container(border=True):
+                subcol_image, subcol_description = st.columns([1,4])
+                with subcol_image:
+                    st.image(image_product_family_level1_dict[rec_product_family_level_1], width=100)
+                with subcol_description:
+                    subcol_badge, subcol_product_name = st.columns([1,6])
+                    with subcol_badge:
+                        st.badge(f'#{i+1}', color='blue', width=100)
+                    with subcol_product_name:
+                        st.write(f'**{rec_product_family_level_2}**')
+                    st.caption(f'€ {rec_product_price}')
+                    subcol_metric1, subcol_metric2 = st.columns([1,1])
+                    with subcol_metric1:
+                        st.badge(label=f'{rec_product_category}', color='grey', width='content')
+                        if rec_product_universe=='Women':
+                            color='violet'
+                        else:
+                            color='blue'
+                        st.badge(label=f'{rec_product_universe}', color=color, width='content')
+                    with subcol_metric2:
+                        st.badge(label=f'{rec_product_family_level_1}', color='orange', width='content')
+                        if rec_product_stock <= 2:
+                            stock_status = 'Low stock'
+                            stock_color = 'yellow'
+                        else: 
+                            stock_status = 'In stock'
+                            stock_color = 'green'
+                        st.badge(label=stock_status,icon=":material/package_2:", color=stock_color)
 
 ##########################################################################################
 ######################### Tab 2 : Store-level Recommendations ############################
