@@ -50,8 +50,6 @@ the_next_purchase
 
 ## Running the Streamlit app
 
-**Option 1: Using Docker**
-
 Clone this repository:
 ```bash 
 git clone https://github.com/plafarguette2/the_next_purchase.git
