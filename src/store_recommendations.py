@@ -156,15 +156,33 @@ def make_store_displays(
         df = df.sort_values(score_col, ascending=False)
         df = df.drop_duplicates(subset=[product_col], keep="first")
 
+        # def _pick_items(g: pd.DataFrame) -> pd.DataFrame:
+        #     counts = {}
+        #     chosen_rows = []
+        #     for row in g.itertuples(index=False):
+        #         fam = getattr(row, family_col)
+        #         if counts.get(fam, 0) >= max_per_family:
+        #             continue
+        #         chosen_rows.append(row)
+        #         counts[fam] = counts.get(fam, 0) + 1
+        #         if len(chosen_rows) >= items_per_display:
+        #             break
+        #     return pd.DataFrame(chosen_rows, columns=g.columns)
+
         def _pick_items(g: pd.DataFrame) -> pd.DataFrame:
             counts = {}
+            family2_used = set()  ### added line ###
             chosen_rows = []
             for row in g.itertuples(index=False):
                 fam = getattr(row, family_col)
+                fam2 = getattr(row, "FamilyLevel2")  ### added line ###
                 if counts.get(fam, 0) >= max_per_family:
+                    continue
+                if fam2 in family2_used:  ### added line ###
                     continue
                 chosen_rows.append(row)
                 counts[fam] = counts.get(fam, 0) + 1
+                family2_used.add(fam2)  ### added line ###
                 if len(chosen_rows) >= items_per_display:
                     break
             return pd.DataFrame(chosen_rows, columns=g.columns)
