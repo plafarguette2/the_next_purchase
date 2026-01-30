@@ -62,7 +62,9 @@ Install all dependencies :
 ```bash 
 pip install -r requirements.txt
 ```
-After cloning the repository, adding data and installing dependencies, simply run:
+**Launch the training pipeline** to create the models by running the notebook modeling.ipynb
+
+Then simply run:
 ```bash
 streamlit run next_product_app.py
 ```
