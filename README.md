@@ -32,8 +32,19 @@ the_next_purchase
 +---images
 |       (images for the app)
 |            
-\---lib
+\---src
         load_data.py
+        store_recommendations.py
+        \---modeling
+                artifacts.py
+                business.py
+                config.py
+                data_prep.py
+                inference.py
+                pipeline.py
+                reranker_data.py
+                reranker_model.py
+                retrieve_als.py
 
 ```
 
@@ -43,30 +54,18 @@ the_next_purchase
 
 Clone this repository:
 ```bash 
-git clone https://github.com/plafarguette2/URW_Data_challenge.git
-cd URW_Data_challenge
+git clone https://github.com/plafarguette2/the_next_purchase.git
+cd the_next_purchase
 ```
 
-Create a ```/data``` folder at root and add data files provided by URW and geodata files sent by our team.
+Create a ```/data``` folder at root and add data files provided by Eleven.
 
-
-Build the Docker image:
-```bash
-docker build -t urw_mall_app .
+Install all dependencies :
+```bash 
+pip install -r requirements.txt
 ```
-
-Run the container:
-```bash
-docker run -d -p 0.0.0.0:8080:8501 urw_mall_app
-```
-
-Open your browser and go to:
-
-http://localhost:8080/
-
-**Option 2: Run locally without Docker**
-
 After cloning the repository, adding data and installing dependencies, simply run:
 ```bash
-streamlit run urw_mall_app.py
+streamlit run next_product_app.py
 ```
+and go to http://localhost:8501/
