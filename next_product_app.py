@@ -1,7 +1,7 @@
 ##########################################################################################
 # ################################### Imports ############################################
 
-from src.load_data import load_clients_data, load_products_data, load_stocks_data, load_stores_data, load_transactions_data
+from src.load_data import load_clients_data, load_products_data, load_stocks_data, load_stores_data, load_transactions_data, load_web_sessions_mock_data
 from src.modeling.artifacts import load_artifacts
 from src.modeling.pipeline import recommend_for_client
 from src.store_recommendations import make_store_displays, build_display_from_product
@@ -15,16 +15,9 @@ import plotly.graph_objects as go
 ##########################################################################################
 ################################### Mock Data ############################################
 
-recommended_product_ids = ['7307348902933965958', '1686112861025120737', '6444962679803347392',
-                           '7933410289764905369', '8649733852988864613', '1598302186363721653',
-                           '43220326960179274', '4756273066838708224', '738601866461520214',
-                           '5137787290282025561', '131684282376766098', '5135449292488127071',
-                           '44114231881774132', '2988727891119413443', '883558141088536721',
-                           '6009228299796499764', '5643052698518512004', '1663437793332066358',
-                           '1093068947787812522']
-
-product_price = 867
-expected_sales_unit = 120
+web_sessions_df = load_web_sessions_mock_data()
+web_sessions_df['product_id'] = web_sessions_df['product_id'].astype(str)
+np.random.seed(8)
 
 ##########################################################################################
 ##################################### Data ###############################################
@@ -140,18 +133,18 @@ with st.sidebar:
         placeholder = 'Enter number of products',
         value='4'
         ))  
-    st.write('---')
-    st.write('**🔽 Filters**')
-    country = st.sidebar.selectbox(
-        label = 'Country',
-        options = customer_countries,
-        placeholder = 'Select country'
-    )
-    customer_segment = st.sidebar.selectbox(
-        label = 'Customer Segment',
-        options = customer_segments,
-        placeholder = 'Select segment'
-        )
+    #st.write('---')
+    # st.write('**🔽 Filters**')
+    # country = st.sidebar.selectbox(
+    #     label = 'Country',
+    #     options = customer_countries,
+    #     placeholder = 'Select country'
+    # )
+    # customer_segment = st.sidebar.selectbox(
+    #     label = 'Customer Segment',
+    #     options = customer_segments,
+    #     placeholder = 'Select segment'
+    #     )
     
 ##########################################################################################
 #################################### Computations ########################################
@@ -457,156 +450,254 @@ with tab2:
                                     st.badge(f'{product_store_stock} units',icon=":material/package_2:", color='green')
 
 ##########################################################################################
-################################## Mock data generation ##################################
-
-# -------------------------------
-# Mock Data Generation
-# -------------------------------
-np.random.seed(42)
-
-# Products
-n_products = 50
-products = pd.DataFrame({
-    'ProductID': range(1, n_products+1),
-    'Name': [f'Product {i}' for i in range(1, n_products+1)],
-    'Category': np.random.choice(['Shoes', 'Shirts', 'Balls', 'Accessories'], n_products)
-})
-
-# Stores
-n_stores = 10
-stores = pd.DataFrame({
-    'StoreID': range(1, n_stores+1),
-    'StoreName': [f'Store {i}' for i in range(1, n_stores+1)],
-})
-
-# Dates
-dates = pd.date_range(start='2026-01-01', end='2026-01-31')
-
-# Recommendations table (top recommended products per store)
-recommendations = []
-for store_id in stores['StoreID']:
-    rec_products = np.random.choice(products['ProductID'], size=10, replace=False)
-    for p in rec_products:
-        recommendations.append({
-            'StoreID': store_id,
-            'ProductID': p,
-            'Score': np.round(np.random.uniform(0.5, 1.0), 2)
-        })
-recommendations_df = pd.DataFrame(recommendations)
-recommendations_df = recommendations_df.merge(products, on='ProductID', how='left')
-
-# Clicks and conversions per day
-click_data = []
-for date in dates:
-    for p in products['ProductID']:
-        clicks = np.random.poisson(lam=20)
-        purchases = np.random.binomial(n=clicks, p=0.2)
-        click_data.append({
-            'Date': date,
-            'ProductID': p,
-            'Clicks': clicks,
-            'Purchases': purchases
-        })
-clicks_df = pd.DataFrame(click_data)
-clicks_df = clicks_df.merge(products, on='ProductID', how='left')
-
-# Conversion rate per day
-conversion_df = clicks_df.groupby('Date').agg({
-    'Clicks':'sum',
-    'Purchases':'sum'
-}).reset_index()
-conversion_df['ConversionRate'] = conversion_df['Purchases'] / conversion_df['Clicks']
-
-# A/B test mock (5 stores recommended vs 5 control)
-ab_data = []
-for p in products['ProductID']:
-    for store_id in stores['StoreID']:
-        group = 'A' if store_id <=5 else 'B'
-        units_sold = np.random.poisson(lam=15 if group=='A' else 10)
-        ab_data.append({
-            'ProductID': p,
-            'StoreID': store_id,
-            'Group': group,
-            'UnitsSold': units_sold
-        })
-ab_df = pd.DataFrame(ab_data)
-ab_df = ab_df.merge(products, on='ProductID', how='left')
-
-# Recommendation coverage (percentage of products recommended)
-coverage_df = pd.DataFrame({
-    'StoreID': stores['StoreID'],
-    'TotalProducts': n_products,
-    'RecommendedProducts': np.random.randint(5, 15, n_stores)
-})
-coverage_df['CoveragePercent'] = coverage_df['RecommendedProducts'] / coverage_df['TotalProducts'] * 100
-coverage_df = coverage_df.merge(stores, on='StoreID', how='left')
-
-##########################################################################################
 ############################# Tab 3 : Monitoring Dashboard ###############################
 
 with tab3:
-    col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
+    st.header("Online Recommendation Monitoring")
+
+    # ---------------------------
+    # Controls
+    # ---------------------------
+    col_ctrl1, col_ctrl2 = st.columns(2)
 
     with col_ctrl1:
-        selected_store = st.selectbox("Select Store", stores['StoreName'])
+        country_list = ["All"] + sorted(web_sessions_df["country"].unique())
+        selected_country = st.selectbox("Select country", country_list, index=5)
 
     with col_ctrl2:
-        selected_product = st.selectbox("Select Product", products['Name'])
+        product_list = ["All"] + sorted(web_sessions_df["product_id"].unique())
+        selected_product = st.selectbox("Select product", product_list)
 
-    with col_ctrl3:
-        top_n = st.number_input("Top N Products", min_value=1, max_value=20, value=10)
+    # ---------------------------
+    # Filtering
+    # ---------------------------
+    df = web_sessions_df.copy()
+    df["session_date"] = pd.to_datetime(df["session_date"])
 
-    # -------------------------------
-    # Layout: 2 columns for charts
-    # -------------------------------
-    col1, col2 = st.columns(2)
+    if selected_country != "All":
+        df_country = df[df["country"] == selected_country]
+    else:
+        df_country = df.copy()
 
-    # -------------------------------
-    # Column 1
-    # -------------------------------
-    with col1:
-        st.subheader(f"Top Recommended Products for {selected_store}")
-        store_id = stores.loc[stores['StoreName']==selected_store, 'StoreID'].values[0]
-        top_recs = recommendations_df[recommendations_df['StoreID']==store_id].sort_values('Score', ascending=False)
-        st.dataframe(top_recs[['ProductID','Name','Category','Score']].head(top_n), use_container_width=True)
-        
-        st.subheader("Conversion Rate Over Time")
-        fig_conv = px.line(conversion_df, x='Date', y='ConversionRate', title="Daily Conversion Rate")
-        st.plotly_chart(fig_conv, use_container_width=True)
+    if selected_product != "All":
+        df_filtered = df_country[df_country["product_id"] == selected_product]
+    else:
+        df_filtered = df_country.copy()
 
-    # -------------------------------
-    # Column 2
-    # -------------------------------
-    with col2:
-        st.subheader("Clicks on Recommended Products Over Time")
-        top_product_ids = recommendations_df[recommendations_df['StoreID']==store_id]['ProductID'].tolist()
-        clicks_plot_df = clicks_df[clicks_df['ProductID'].isin(top_product_ids)].groupby('Date').agg({'Clicks':'sum'}).reset_index()
-        fig_clicks = px.line(clicks_plot_df, x='Date', y='Clicks', title="Total Clicks on Recommended Products")
-        st.plotly_chart(fig_clicks, use_container_width=True)
-        
-        st.subheader(f"A/B Test Units Sold for {selected_product}")
-        product_id = products.loc[products['Name']==selected_product, 'ProductID'].values[0]
-        ab_plot_df = ab_df[ab_df['ProductID']==product_id].groupby(['Group','StoreID']).agg({'UnitsSold':'sum'}).reset_index()
-        fig_ab = px.line(ab_plot_df, x='StoreID', y='UnitsSold', color='Group', markers=True,
-                        title=f"Units Sold by Store (Group A vs B) for {selected_product}")
-        st.plotly_chart(fig_ab, use_container_width=True)
+    df_filtered["date"] = df_filtered["session_date"].dt.date
+    df_country["date"] = df_country["session_date"].dt.date  # for table
 
-    # -------------------------------
-    # Full width charts below columns
-    # -------------------------------
-    st.subheader("Conversion Funnel for Recommended Products")
-    funnel_total_clicks = clicks_df['Clicks'].sum()
-    funnel_total_added = clicks_df['Clicks'].sum() * 0.5  # mock added to basket
-    funnel_total_purchases = clicks_df['Purchases'].sum()
-    fig_funnel = go.Figure(go.Funnel(
-        y = ["Recommended", "Added to Basket", "Purchased"],
-        x = [funnel_total_clicks, funnel_total_added, funnel_total_purchases]
-    ))
+    # CTR & Conversion Rate (rolling, dual axis)
+
+
+    # Aggregate per session
+    session_metrics = (
+        df_filtered.groupby("session_id")
+        .agg(
+            date=("session_date", "first"),
+            clicked_any=("is_clicked", "max"),  # 1 if at least one click
+            bought_any=("is_bought", "max")    # 1 if at least one purchase
+        )
+        .reset_index()
+    )
+
+    # Daily CTR and Conversion Rate
+    daily_metrics = (
+        session_metrics.groupby(session_metrics["date"].dt.date)
+        .agg(
+            impressions=("session_id", "count"),
+            ctr=("clicked_any", "mean"),           # fraction of sessions with >=1 click
+            conversion_rate=("bought_any", "mean") # fraction of sessions with >=1 purchase
+        )
+        .reset_index()
+    )
+
+    # Rolling average
+    rolling_days = 7
+    daily_metrics["ctr_roll"] = daily_metrics["ctr"].rolling(rolling_days, min_periods=1).mean()
+    daily_metrics["conversion_rate_roll"] = daily_metrics["conversion_rate"].rolling(rolling_days, min_periods=1).mean()
+
+    # Plot
+    fig_rates = go.Figure()
+    fig_rates.add_trace(
+        go.Scatter(
+            x=daily_metrics["date"],
+            y=daily_metrics["ctr_roll"],
+            name="CTR (rolling)",
+            yaxis="y1",
+            mode="lines+markers"
+        )
+    )
+    fig_rates.add_trace(
+        go.Scatter(
+            x=daily_metrics["date"],
+            y=daily_metrics["conversion_rate_roll"],
+            name="Conversion Rate (rolling)",
+            yaxis="y2",
+            mode="lines+markers"
+        )
+    )
+
+    fig_rates.update_layout(
+        title=f"CTR & Conversion Rate Evolution (Last 30 Days) - {selected_country} (Mock Data)",
+        xaxis_title="Date",
+        yaxis=dict(title="CTR"), 
+        yaxis2=dict(title="Conversion Rate", overlaying="y", side="right"),
+        legend=dict(x=0.01, y=0.99),
+        height=450
+    )
+    st.plotly_chart(fig_rates, use_container_width=True)
+
+    # Funnel (last 7 days)
+   
+    last_7_days = df_filtered["session_date"].max() - pd.Timedelta(days=6)
+    df_7d = df_filtered[df_filtered["session_date"] >= last_7_days]
+
+    # Use new definition for funnel
+    recommended_sessions = df_7d["session_id"].nunique()
+    clicked_sessions = df_7d.groupby("session_id")["is_clicked"].max().sum()  # number of sessions with at least one click
+    bought_sessions = df_7d.groupby("session_id")["is_bought"].max().sum()    # number of sessions with at least one purchase
+
+    fig_funnel = go.Figure(
+        go.Funnel(
+            y=["Recommended Sessions", "Sessions Clicked", "Sessions Purchased"],
+            x=[recommended_sessions, clicked_sessions, bought_sessions]
+        )
+    )
+    fig_funnel.update_layout(
+        title="Recommendation Funnel (Last 7 Days) (Mock Data)",
+        height=400
+    )
     st.plotly_chart(fig_funnel, use_container_width=True)
 
-    st.subheader("Recommendation Coverage by Store")
-    fig_cov = px.bar(coverage_df, x='StoreName', y='CoveragePercent', title="Percentage of Products Recommended per Store")
-    st.plotly_chart(fig_cov, use_container_width=True)
+    # Top 10 most recommended products (country only)
+
+    top_products = (
+        df_country.groupby("product_id")
+        .size()
+        .reset_index(name="times_recommended")
+        .sort_values("times_recommended", ascending=False)
+        .head(10)
+    )
+
+    # Ensure same dtype for merge
+    top_products["product_id"] = top_products["product_id"].astype(int)
+    products_df["ProductID"] = products_df["ProductID"].astype(int)
+
+    top_products = top_products.merge(
+        products_df[["ProductID", "FamilyLevel2"]],
+        left_on="product_id",
+        right_on="ProductID",
+        how="left"
+    )
+    top_products['product_id'] = top_products['product_id'].astype(str)
+
+    st.write("**Top 10 Most Recommended Products (Mock Data)**")
+    st.dataframe(
+        top_products[["product_id", "FamilyLevel2", "times_recommended"]],
+        use_container_width=True
+    )
+
+    ################################################################################
+
+    categories = products_df["Category"].unique()
+
+    coverage_mock = pd.DataFrame({
+        "Category": categories,
+        # simulate realistic availability
+        "nb_products_available": np.random.randint(30, 200, size=len(categories))
+    })
+
+    # simulate biased recommendation engine
+    coverage_mock["coverage_pct"] = np.clip(
+        np.random.beta(a=2, b=5, size=len(categories)),  # skewed towards low coverage
+        0.1,
+        0.9
+    )
+
+    coverage_mock["nb_products_recommended"] = (
+        coverage_mock["nb_products_available"] * coverage_mock["coverage_pct"]
+    ).astype(int)
+
+    coverage_mock["coverage_pct"] = (
+        coverage_mock["nb_products_recommended"] /
+        coverage_mock["nb_products_available"]
+    )
+
+    # -----------------------------
+    # Plot
+    # -----------------------------
+    fig_coverage = px.bar(
+        coverage_mock.sort_values("coverage_pct", ascending=False),
+        x="Category",
+        y="coverage_pct",
+        title="Recommendation Coverage by Category (Mock Data)",
+        labels={"coverage_pct": "Coverage (%)"},
+        text_auto=".0%"
+    )
+
+    fig_coverage.update_layout(
+        yaxis_tickformat=".0%",
+        xaxis_title="Category",
+        yaxis_title="Coverage",
+        height=420
+    )
+
+    st.plotly_chart(fig_coverage, use_container_width=True)
+
+    # Mock A/B testing data
+
+    dates = pd.date_range("2026-01-01", "2026-01-30", freq="D")
+
+    ab_df = pd.DataFrame({
+        "date": dates,
+        # Recommended group sells more on average
+        "units_sold_recommended": np.random.poisson(lam=105, size=len(dates)),
+        "units_sold_control": np.random.poisson(lam=85, size=len(dates))
+    })
+
+    # Rolling average for smoother curves
+    rolling_days = 3
+    ab_df["recommended_roll"] = ab_df["units_sold_recommended"].rolling(
+        rolling_days, min_periods=1
+    ).mean()
+
+    ab_df["control_roll"] = ab_df["units_sold_control"].rolling(
+        rolling_days, min_periods=1
+    ).mean()
+
+    # -----------------------------
+    # Plot
+    # -----------------------------
+    fig_ab = go.Figure()
+
+    fig_ab.add_trace(
+        go.Scatter(
+            x=ab_df["date"],
+            y=ab_df["recommended_roll"],
+            name="Recommended group",
+            mode="lines+markers"
+        )
+    )
+
+    fig_ab.add_trace(
+        go.Scatter(
+            x=ab_df["date"],
+            y=ab_df["control_roll"],
+            name="Control group",
+            mode="lines+markers"
+        )
+    )
+
+    fig_ab.update_layout(
+        title="A/B Testing – Units Sold Over Time",
+        xaxis_title="Date",
+        yaxis_title="Units Sold",
+        height=420,
+        legend=dict(x=0.01, y=0.99)
+    )
+
+    st.plotly_chart(fig_ab, use_container_width=True)
 
 
 
@@ -619,7 +710,4 @@ with tab3:
 
 
 
-
-
-
-st.balloons()
+#st.balloons()

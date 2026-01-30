@@ -170,13 +170,40 @@ def business_rerank(scored_df: pd.DataFrame,
     df = df.sort_values(["business_score", "p_buy", "als_score"], ascending=False).reset_index(drop=True)
     return df
 
-def recommend_topk(scored_df: pd.DataFrame, k: int = 10) -> pd.DataFrame:
+# def recommend_topk(scored_df: pd.DataFrame, k: int = 10) -> pd.DataFrame:
+#     """
+#     Return Top-K per user. Assumes scored_df already has business_score.
+#     """
+#     return (
+#         scored_df
+#         .groupby("ClientID", group_keys=False)
+#         .head(k)
+#         .reset_index(drop=True)
+#     )
+
+def recommend_topk(scored_df: pd.DataFrame, products_df : pd.DataFrame, k: int = 10) -> pd.DataFrame:
     """
     Return Top-K per user. Assumes scored_df already has business_score.
     """
+
+    meta_cols = ["ProductID", "Category", "FamilyLevel1", "FamilyLevel2", "Universe"]
+    meta_cols = [c for c in meta_cols if c in products_df.columns]
+
+    if meta_cols:
+        scored_df = scored_df.merge(products_df[meta_cols], on="ProductID", how="left")
+
+    # nice column order
+    prefer_cols = [
+        "ClientID", "ProductID",
+        "Category", "FamilyLevel1", "FamilyLevel2", "Universe",
+        "als_score", "p_buy",
+        "StockQty", "item_value", "business_score",
+    ]
+    keep_cols = [c for c in prefer_cols if c in scored_df.columns]
     return (
         scored_df
+        .drop_duplicates(subset=["ClientID", "FamilyLevel2"], keep="first")
         .groupby("ClientID", group_keys=False)
         .head(k)
         .reset_index(drop=True)
-    )
+    )[keep_cols]

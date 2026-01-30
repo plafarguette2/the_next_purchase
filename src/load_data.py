@@ -16,3 +16,8 @@ def load_stores_data(datadirpath:str=DATADIRPATH) -> pd.DataFrame :
 
 def load_transactions_data(datadirpath:str=DATADIRPATH) -> pd.DataFrame : 
     return pd.read_csv(f"{datadirpath}/transactions.csv")
+
+### mock data
+
+def load_web_sessions_mock_data() -> pd.DataFrame :
+    return pd.read_csv("mock_data/web_sessions.csv")

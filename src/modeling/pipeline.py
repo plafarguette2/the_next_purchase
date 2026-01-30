@@ -85,21 +85,21 @@ def recommend_for_client(
     )
 
     # --- 5) take top-k
-    top_df = recommend_topk(final_df, k=int(top_k))
+    top_df = recommend_topk(final_df, k=int(top_k),products_df=products_df)
 
-    # --- 6) attach product metadata for UI
-    meta_cols = ["ProductID", "Category", "FamilyLevel1", "FamilyLevel2", "Universe"]
-    meta_cols = [c for c in meta_cols if c in products_df.columns]
+    # # --- 6) attach product metadata for UI
+    # meta_cols = ["ProductID", "Category", "FamilyLevel1", "FamilyLevel2", "Universe"]
+    # meta_cols = [c for c in meta_cols if c in products_df.columns]
 
-    if meta_cols:
-        top_df = top_df.merge(products_df[meta_cols], on="ProductID", how="left")
+    # if meta_cols:
+    #     top_df = top_df.merge(products_df[meta_cols], on="ProductID", how="left")
 
-    # nice column order
-    prefer_cols = [
-        "ClientID", "ProductID",
-        "Category", "FamilyLevel1", "FamilyLevel2", "Universe",
-        "als_score", "p_buy",
-        "StockQty", "item_value", "business_score",
-    ]
-    keep_cols = [c for c in prefer_cols if c in top_df.columns]
-    return top_df[keep_cols].reset_index(drop=True)
+    # # nice column order
+    # prefer_cols = [
+    #     "ClientID", "ProductID",
+    #     "Category", "FamilyLevel1", "FamilyLevel2", "Universe",
+    #     "als_score", "p_buy",
+    #     "StockQty", "item_value", "business_score",
+    # ]
+    # keep_cols = [c for c in prefer_cols if c in top_df.columns]
+    return top_df#[keep_cols].reset_index(drop=True)
